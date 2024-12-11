@@ -16,16 +16,17 @@ export function PurchaseCard({ group }: PurchaseCardProps) {
     return quantityInKg * price;
   };
 
-  // Calculate group total correctly
+  // Calculate group total correctly using the price per kg
   const groupTotal = group.purchases.reduce((total, purchase) => {
     return (
-      total + calculateTotal(purchase.quantity, purchase.unit, purchase.price)
+      total +
+      calculateTotal(purchase.quantity, purchase.unit, purchase.prices.kg)
     );
   }, 0);
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
+    <Card className="min-h-[200px] max-h-[400px] overflow-y-auto">
+      <CardHeader className="pb-3 sticky top-0 bg-background z-10">
         <div className="flex items-center gap-2 text-muted-foreground">
           <CalendarDays className="h-4 w-4" />
           <span>{new Date(group.date).toLocaleDateString()}</span>
