@@ -19,16 +19,34 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ date, onDateChange }: DatePickerProps) {
+  const [open, setOpen] = React.useState(false);
+
   const handleSelect = (selectedDate: Date | undefined) => {
-    if (selectedDate && isFuture(selectedDate)) {
+    if (!selectedDate) {
+      onDateChange(undefined);
+      setOpen(false);
+      return;
+    }
+
+    // Ensure the date is treated as local by setting the time to noon
+    const localDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      12
+    );
+
+    if (isFuture(localDate)) {
       toast.error("Cannot select future dates");
       return;
     }
-    onDateChange(selectedDate);
+
+    onDateChange(localDate);
+    setOpen(false);
   };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
@@ -41,7 +59,7 @@ export function DatePicker({ date, onDateChange }: DatePickerProps) {
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={date}

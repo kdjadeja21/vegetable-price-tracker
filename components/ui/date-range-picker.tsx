@@ -26,20 +26,33 @@ export function DateRangePicker({
   date,
   onDateChange,
 }: DateRangePickerProps) {
-  const disabledDays = {
-    after: new Date(),
-  };
-
   const handleSelect = (selectedRange: DateRange | undefined) => {
-    if (selectedRange?.from && isFuture(selectedRange.from)) {
+    if (!selectedRange) {
+      onDateChange(undefined);
+      return;
+    }
+
+    const { from, to } = selectedRange;
+
+    // Normalize the dates to local time by setting the time to noon
+    const normalizedFrom = from
+      ? new Date(from.getFullYear(), from.getMonth(), from.getDate(), 12)
+      : undefined;
+    const normalizedTo = to
+      ? new Date(to.getFullYear(), to.getMonth(), to.getDate(), 12)
+      : undefined;
+
+    if (normalizedFrom && isFuture(normalizedFrom)) {
       toast.error("Cannot select future dates");
       return;
     }
-    if (selectedRange?.to && isFuture(selectedRange.to)) {
+
+    if (normalizedTo && isFuture(normalizedTo)) {
       toast.error("Cannot select future dates");
       return;
     }
-    onDateChange(selectedRange);
+
+    onDateChange({ from: normalizedFrom, to: normalizedTo });
   };
 
   return (
@@ -77,9 +90,7 @@ export function DateRangePicker({
             selected={date}
             onSelect={handleSelect}
             numberOfMonths={2}
-            disabled={disabledDays}
-            fromDate={undefined}
-            toDate={new Date()}
+            disabled={{ after: new Date() }}
           />
         </PopoverContent>
       </Popover>
