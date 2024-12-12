@@ -10,6 +10,7 @@ import { useVegetableFilters } from "@/lib/hooks/useVegetableFilters";
 import { DataFilters } from "@/components/ui/data-filters";
 import { VegetableCard } from "@/components/vegetables/vegetable-card";
 import { SortField, SortOrder } from "@/lib/types";
+import { Loading } from "@/components/ui/loading";
 
 export default function Home() {
   const {
@@ -24,7 +25,7 @@ export default function Home() {
   } = useVegetableFilters();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <Loading message="Loading vegetables..." />;
   }
 
   return (
@@ -53,14 +54,6 @@ export default function Home() {
         <DataFilters
           search={search}
           onSearchChange={(value: string) => setSearch(value)}
-          sortField={sortField}
-          onSortFieldChange={(value: string) =>
-            setSortField(value as SortField)
-          }
-          sortOrder={sortOrder}
-          onSortOrderChange={(value: string) =>
-            setSortOrder(value as SortOrder)
-          }
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 w-full">

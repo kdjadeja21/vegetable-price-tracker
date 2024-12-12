@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,9 @@ import {
 } from "@/lib/firebase-utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Vegetable } from "@/lib/types";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import { Loading } from "@/components/ui/loading";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type VegetableOption = {
   value: string;
@@ -23,14 +25,29 @@ type VegetableOption = {
   isNew?: boolean;
 };
 
+interface FormErrors {
+  vegetableName?: string;
+  quantity?: string;
+  price?: string;
+  date?: string;
+}
+
+// Toast styles
+const toastStyles = {
+  success: { backgroundColor: "#10B981", color: "white" }, // Emerald-500
+  error: { backgroundColor: "#EF4444", color: "white" }, // Red-500
+  warning: { backgroundColor: "#F59E0B", color: "white" }, // Amber-500
+};
+
 export default function AddPurchase() {
   const [vegetables, setVegetables] = useState<Vegetable[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const selectRef = useRef<any>(null);
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
-  const { toast } = useToast();
   const isEditing = !!editId;
 
   useEffect(() => {
@@ -54,10 +71,8 @@ export default function AddPurchase() {
         }
       } catch (error) {
         console.error("Error loading data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load data",
-          variant: "destructive",
+        toast.error("Failed to load data", {
+          style: { backgroundColor: "rgb(239 68 68)", color: "white" },
         });
       } finally {
         setLoading(false);
@@ -65,7 +80,7 @@ export default function AddPurchase() {
     };
 
     loadData();
-  }, [editId, isEditing, toast]);
+  }, [editId, isEditing]);
 
   const vegetableOptions: VegetableOption[] = vegetables.map((veg) => ({
     value: veg.id,
@@ -83,8 +98,49 @@ export default function AddPurchase() {
 
   const router = useRouter();
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Validate vegetable name
+    if (!formData.vegetableName.trim()) {
+      newErrors.vegetableName = "Vegetable name is required";
+    }
+
+    // Validate quantity
+    if (!formData.quantity) {
+      newErrors.quantity = "Quantity is required";
+    } else if (Number(formData.quantity) <= 0) {
+      newErrors.quantity = "Quantity must be greater than 0";
+    }
+
+    // Validate price
+    if (!formData.price) {
+      newErrors.price = "Price is required";
+    } else if (Number(formData.price) <= 0) {
+      newErrors.price = "Price must be greater than 0";
+    }
+
+    // Validate date
+    if (!formData.date) {
+      newErrors.date = "Date is required";
+    } else if (new Date(formData.date) > new Date()) {
+      newErrors.date = "Date cannot be in the future";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error("Validation Error", {
+        style: toastStyles.error,
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const existingVegetable = vegetables.find(
@@ -116,32 +172,42 @@ export default function AddPurchase() {
 
       if (isEditing) {
         await updatePurchase(editId!, purchaseData);
-        toast({
-          title: "Success",
-          description: "Purchase updated successfully",
+        toast.success("Purchase updated successfully", {
+          style: toastStyles.success,
         });
+        router.push("/table-view");
       } else {
         await addPurchase(purchaseData);
-        toast({
-          title: "Success",
-          description: "Purchase added successfully",
+        toast.success("Purchase added successfully", {
+          style: toastStyles.success,
         });
-      }
 
-      router.push("/table-view");
+        // Clear the select using ref
+        if (selectRef.current) {
+          selectRef.current.clearValue();
+        }
+
+        // Reset form including select field
+        setFormData({
+          vegetableId: "",
+          vegetableName: "",
+          quantity: "",
+          unit: "kg",
+          price: "",
+          date: new Date().toISOString().split("T")[0],
+        });
+        setErrors({});
+      }
     } catch (error) {
       console.error("Error saving purchase:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${isEditing ? "update" : "add"} purchase`,
-        variant: "destructive",
-      });
+      toast.error(`Failed to ${isEditing ? "update" : "add"} purchase`);
+    } finally {
       setIsSaving(false);
     }
   };
 
   if (loading) {
-    return <div>Loading vegetables...</div>;
+    return <Loading message="Loading vegetables..." />;
   }
 
   return (
@@ -150,7 +216,7 @@ export default function AddPurchase() {
         <h1 className="text-2xl font-bold">
           {isEditing ? "Edit Purchase" : "Add Purchase"}
         </h1>
-        <Button asChild variant="outline" className="w-full sm:w-auto">
+        <Button asChild variant="outline" className="w-full sm:w-auto ">
           <Link href="/table-view">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Table View
@@ -162,6 +228,7 @@ export default function AddPurchase() {
         <div className="space-y-2">
           <Label htmlFor="vegetable">Vegetable</Label>
           <CreatableSelect
+            ref={selectRef}
             inputId="vegetable"
             options={vegetableOptions}
             value={vegetableOptions.find(
@@ -178,6 +245,11 @@ export default function AddPurchase() {
             classNamePrefix="react-select"
             isDisabled={loading}
           />
+          {errors.vegetableName && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.vegetableName}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-4">
@@ -194,6 +266,9 @@ export default function AddPurchase() {
               }
               placeholder="Enter quantity"
             />
+            {errors.quantity && (
+              <p className="text-sm text-destructive mt-1">{errors.quantity}</p>
+            )}
           </div>
           <div className="space-y-2 w-24">
             <Label htmlFor="unit">Unit</Label>
@@ -224,20 +299,28 @@ export default function AddPurchase() {
             }
             placeholder="Enter price"
           />
+          {errors.price && (
+            <p className="text-sm text-destructive mt-1">{errors.price}</p>
+          )}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="date">Purchase Date</Label>
-          <Input
-            id="date"
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+          <DatePicker
+            date={formData.date ? new Date(formData.date) : undefined}
+            onDateChange={(date) =>
+              setFormData({
+                ...formData,
+                date: date ? date.toISOString().split("T")[0] : "",
+              })
+            }
           />
+          {errors.date && (
+            <p className="text-sm text-destructive mt-1">{errors.date}</p>
+          )}
         </div>
 
-        <Button disabled={isSaving} type="submit" className="w-full">
-          {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        <Button disabled={isSaving} type="submit" className="w-full ">
           {isSaving
             ? "Saving..."
             : isEditing

@@ -5,25 +5,14 @@ import { getAllPurchaseRecords, deletePurchase } from "@/lib/firebase-utils";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/vegetables/data-table";
 import { PurchaseCard } from "@/components/vegetables/purchase-card";
-import { dummyVegetables, dummyPurchases } from "@/lib/data";
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
-import { useVegetableFilters } from "@/lib/hooks/useVegetableFilters";
 import { DataFilters } from "@/components/ui/data-filters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+
 import { groupPurchasesByDate } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { PurchaseGroup, Purchase } from "@/lib/types";
-import { usePurchaseFilters } from "@/lib/hooks/usePurchaseFilters";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +23,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { PaginationWithSize } from "@/components/ui/pagination-with-size";
+import { Loading } from "@/components/ui/loading";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -46,9 +38,9 @@ export default function TableView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [purchaseToDelete, setPurchaseToDelete] = useState<string | null>(null);
-  const { toast } = useToast();
   const router = useRouter();
   const [pageSize, setPageSize] = useState(5);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   const filteredPurchases = useMemo(() => {
     let result = [...purchaseGroups];
@@ -64,8 +56,19 @@ export default function TableView() {
         .filter((group) => group.purchases.length > 0);
     }
 
+    if (dateRange?.from || dateRange?.to) {
+      result = result.filter((group) => {
+        const groupDate = new Date(group.date);
+        const isAfterStart = dateRange.from
+          ? groupDate >= dateRange.from
+          : true;
+        const isBeforeEnd = dateRange.to ? groupDate <= dateRange.to : true;
+        return isAfterStart && isBeforeEnd;
+      });
+    }
+
     return result;
-  }, [purchaseGroups, search]);
+  }, [purchaseGroups, search, dateRange]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -130,16 +133,9 @@ export default function TableView() {
       await deletePurchase(purchaseToDelete);
       const updatedData = await getAllPurchaseRecords();
       setPurchaseGroups(updatedData);
-      toast({
-        title: "Purchase deleted",
-        description: "The purchase has been successfully deleted.",
-      });
+      toast.success("The purchase has been successfully deleted.");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete the purchase. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to delete the purchase. Please try again.");
     } finally {
       setPurchaseToDelete(null);
     }
@@ -161,7 +157,7 @@ export default function TableView() {
   }, []);
 
   if (loading) {
-    return <div>Loading records...</div>;
+    return <Loading message="Loading records..." />;
   }
 
   return (
@@ -195,8 +191,14 @@ export default function TableView() {
                 <TabsTrigger value="cards">Card View</TabsTrigger>
               </TabsList>
 
-              <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
+              <div className="bg-gray-50 p-4 rounded-lg shadow-inner space-y-4">
                 <DataFilters search={search} onSearchChange={setSearch} />
+                <div className="relative">
+                  <DateRangePicker
+                    date={dateRange}
+                    onDateChange={setDateRange}
+                  />
+                </div>
               </div>
 
               <TabsContent value="table" className="space-y-6">
