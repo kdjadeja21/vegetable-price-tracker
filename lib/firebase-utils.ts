@@ -7,6 +7,8 @@ import {
   where,
   doc,
   updateDoc,
+  deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Purchase } from "./types";
@@ -130,6 +132,42 @@ export async function getAllPurchaseRecords() {
     return groupPurchasesByDate(purchases);
   } catch (error) {
     console.error("Error getting purchase records:", error);
+    throw error;
+  }
+}
+
+export async function deletePurchase(purchaseId: string) {
+  try {
+    await deleteDoc(doc(db, "purchases", purchaseId));
+  } catch (error) {
+    console.error("Error deleting purchase:", error);
+    throw error;
+  }
+}
+
+export async function getPurchase(id: string) {
+  try {
+    const docRef = doc(db, "purchases", id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Purchase;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting purchase:", error);
+    throw error;
+  }
+}
+
+export async function updatePurchase(
+  id: string,
+  purchase: Omit<Purchase, "id">
+) {
+  try {
+    await updateDoc(doc(db, "purchases", id), purchase);
+  } catch (error) {
+    console.error("Error updating purchase:", error);
     throw error;
   }
 }

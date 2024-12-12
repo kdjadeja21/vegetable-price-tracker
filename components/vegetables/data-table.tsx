@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { PurchaseGroup, Purchase } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Pagination,
@@ -20,25 +20,28 @@ import {
   PaginationNext,
   PaginationLink,
 } from "@/components/ui/pagination";
+import { PaginationWithSize } from "@/components/ui/pagination-with-size";
 
 interface DataTableProps {
   purchases: PurchaseGroup[];
-  sortField: string;
-  sortOrder: "asc" | "desc";
-  onSort: (field: string) => void;
   currentPage: number;
   onPageChange: (page: number) => void;
   totalPages: number;
+  onEdit: (purchase: Purchase) => void;
+  onDelete: (purchaseId: string) => void;
+  pageSize: number;
+  onPageSizeChange: (size: number) => void;
 }
 
 export function DataTable({
   purchases,
-  sortField,
-  sortOrder,
-  onSort,
   currentPage,
   onPageChange,
   totalPages,
+  onEdit,
+  onDelete,
+  pageSize,
+  onPageSizeChange,
 }: DataTableProps) {
   const calculateTotal = (purchase: Purchase) => {
     if (purchase.unit === "gram") {
@@ -48,47 +51,20 @@ export function DataTable({
     return purchase.quantity * purchase.price;
   };
 
-  const SortIcon = ({ field }: { field: string }) => {
-    if (field !== sortField) return <ArrowUpDown className="w-4 h-4 ml-1" />;
-    return sortOrder === "asc" ? (
-      <ArrowUp className="w-4 h-4 ml-1" />
-    ) : (
-      <ArrowDown className="w-4 h-4 ml-1" />
-    );
-  };
-
-  const SortableHeader = ({
-    field,
-    children,
-  }: {
-    field: string;
-    children: React.ReactNode;
-  }) => (
-    <TableHead>
-      <Button
-        variant="ghost"
-        className="hover:bg-transparent flex items-center font-medium"
-        onClick={() => onSort(field)}
-      >
-        {children}
-        <SortIcon field={field} />
-      </Button>
-    </TableHead>
-  );
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader field="vegetableName">Vegetable</SortableHeader>
-              <SortableHeader field="quantity">Quantity</SortableHeader>
-              <SortableHeader field="price">Price/kg</SortableHeader>
+              <TableHead>Vegetable</TableHead>
+              <TableHead>Quantity</TableHead>
+              <TableHead>Price/kg</TableHead>
               <TableHead>Price/100g</TableHead>
               <TableHead>Price/250g</TableHead>
               <TableHead>Price/500g</TableHead>
-              <SortableHeader field="date">Date</SortableHeader>
+              <TableHead>Date</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -115,6 +91,25 @@ export function DataTable({
                     <TableCell>
                       {new Date(group.date).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(purchase)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => onDelete(purchase.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </>
@@ -123,58 +118,15 @@ export function DataTable({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-6">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onPageChange(Math.max(1, currentPage - 1));
-                  }}
-                  className={
-                    currentPage === 1 ? "pointer-events-none opacity-50" : ""
-                  }
-                />
-              </PaginationItem>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onPageChange(page);
-                      }}
-                      isActive={currentPage === page}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
-
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onPageChange(Math.min(totalPages, currentPage + 1));
-                  }}
-                  className={
-                    currentPage === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+      <div className="flex justify-center mt-6">
+        <PaginationWithSize
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      </div>
     </div>
   );
 }

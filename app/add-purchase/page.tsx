@@ -7,9 +7,15 @@ import { Label } from "@/components/ui/label";
 import CreatableSelect from "react-select/creatable";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { addPurchase, getVegetables } from "@/lib/firebase-utils";
-import { useRouter } from "next/navigation";
+import {
+  addPurchase,
+  getVegetables,
+  getPurchase,
+  updatePurchase,
+} from "@/lib/firebase-utils";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Vegetable } from "@/lib/types";
+import { useToast } from "@/components/ui/use-toast";
 
 type VegetableOption = {
   value: string;
@@ -22,20 +28,44 @@ export default function AddPurchase() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const { toast } = useToast();
+  const isEditing = !!editId;
+
   useEffect(() => {
-    const loadVegetables = async () => {
+    const loadData = async () => {
       try {
         const data = await getVegetables();
         setVegetables(data);
+
+        if (isEditing) {
+          const purchase = await getPurchase(editId!);
+          if (purchase) {
+            setFormData({
+              vegetableId: purchase.vegetableId,
+              vegetableName: purchase.vegetableName,
+              quantity: purchase.quantity.toString(),
+              unit: purchase.unit,
+              price: purchase.price.toString(),
+              date: purchase.date,
+            });
+          }
+        }
       } catch (error) {
-        console.error("Error loading vegetables:", error);
+        console.error("Error loading data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    loadVegetables();
-  }, []);
+    loadData();
+  }, [editId, isEditing, toast]);
 
   const vegetableOptions: VegetableOption[] = vegetables.map((veg) => ({
     value: veg.id,
@@ -66,7 +96,7 @@ export default function AddPurchase() {
           ? (Number(formData.price) / Number(formData.quantity)) * 1000
           : Number(formData.price);
 
-      await addPurchase({
+      const purchaseData = {
         vegetableId: existingVegetable
           ? existingVegetable.id
           : formData.vegetableName.toLowerCase().replace(/\s+/g, "-") +
@@ -82,11 +112,30 @@ export default function AddPurchase() {
           originalUnit: formData.unit as "kg" | "gram",
           originalPrice: Number(formData.price),
         },
-      });
+      };
 
-      router.push("/");
+      if (isEditing) {
+        await updatePurchase(editId!, purchaseData);
+        toast({
+          title: "Success",
+          description: "Purchase updated successfully",
+        });
+      } else {
+        await addPurchase(purchaseData);
+        toast({
+          title: "Success",
+          description: "Purchase added successfully",
+        });
+      }
+
+      router.push("/table-view");
     } catch (error) {
-      console.error("Error adding purchase:", error);
+      console.error("Error saving purchase:", error);
+      toast({
+        title: "Error",
+        description: `Failed to ${isEditing ? "update" : "add"} purchase`,
+        variant: "destructive",
+      });
       setIsSaving(false);
     }
   };
@@ -98,11 +147,13 @@ export default function AddPurchase() {
   return (
     <div className="container max-w-2xl mx-auto py-8 px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <h1 className="text-2xl font-bold">Add Purchase</h1>
+        <h1 className="text-2xl font-bold">
+          {isEditing ? "Edit Purchase" : "Add Purchase"}
+        </h1>
         <Button asChild variant="outline" className="w-full sm:w-auto">
-          <Link href="/">
+          <Link href="/table-view">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            Back to Table View
           </Link>
         </Button>
       </div>
@@ -187,7 +238,11 @@ export default function AddPurchase() {
 
         <Button disabled={isSaving} type="submit" className="w-full">
           {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {isSaving ? "Saving..." : "Save Purchase"}
+          {isSaving
+            ? "Saving..."
+            : isEditing
+            ? "Update Purchase"
+            : "Add Purchase"}
         </Button>
       </form>
     </div>
