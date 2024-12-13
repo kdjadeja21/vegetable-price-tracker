@@ -150,7 +150,7 @@ export default function AddPurchase() {
       const pricePerKg =
         formData.unit === "gram"
           ? (Number(formData.price) / Number(formData.quantity)) * 1000
-          : Number(formData.price);
+          : Number(formData.price) / Number(formData.quantity);
 
       const purchaseData = {
         vegetableId: existingVegetable
