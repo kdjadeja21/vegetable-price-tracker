@@ -93,7 +93,7 @@ export default function AddPurchase() {
     quantity: "",
     unit: "kg",
     price: "",
-    date: new Date().toISOString().split("T")[0],
+    date: new Date().toISOString(),
   });
 
   const router = useRouter();

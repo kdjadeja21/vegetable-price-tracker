@@ -16,7 +16,9 @@ export function formatCurrency(amount: number): string {
 
 export function groupPurchasesByDate(purchases: Purchase[]): PurchaseGroup[] {
   const groups = purchases.reduce((acc, purchase) => {
-    const date = purchase.date;
+    // Extract just the date portion from the datetime string
+    const date = purchase.date.split('T')[0];
+    
     if (!acc[date]) {
       acc[date] = {
         date,
@@ -31,7 +33,13 @@ export function groupPurchasesByDate(purchases: Purchase[]): PurchaseGroup[] {
     return acc;
   }, {} as Record<string, Omit<PurchaseGroup, "purchases"> & { purchases: Purchase[] }>);
 
-  return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  // Sort groups by date, then sort purchases within each group by datetime
+  return Object.values(groups)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map(group => ({
+      ...group,
+      purchases: group.purchases.sort((a, b) => b.date.localeCompare(a.date))
+    }));
 }
 
 export function calculatePrice(unit: number | "KG", price: number): PriceList {
