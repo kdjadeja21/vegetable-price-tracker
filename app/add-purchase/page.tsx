@@ -91,7 +91,7 @@ export default function AddPurchase() {
     vegetableId: "",
     vegetableName: "",
     quantity: "",
-    unit: "kg",
+    unit: "gram",
     price: "",
     date: new Date().toISOString(),
   });
@@ -192,7 +192,7 @@ export default function AddPurchase() {
           vegetableId: "",
           vegetableName: "",
           quantity: "",
-          unit: "kg",
+          unit: "gram",
           price: "",
           date: new Date().toISOString().split("T")[0],
         });
@@ -280,14 +280,14 @@ export default function AddPurchase() {
               }
               className="w-full h-10 px-3 rounded-md border border-input bg-background"
             >
-              <option value="kg">kg</option>
               <option value="gram">gram</option>
+              <option value="kg">kg</option>
             </select>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="price">Price per {formData.unit}</Label>
+          <Label htmlFor="price">Price</Label>
           <Input
             id="price"
             type="number"
