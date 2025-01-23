@@ -90,23 +90,45 @@ export async function getVegetables() {
     const vegetablesMap = new Map();
 
     purchases.forEach((purchase) => {
+      // Convert vegetable name to lowercase to ensure consistent keys
       const vegetableKey = purchase.vegetableName.toLowerCase();
 
+      // If this vegetable hasn't been seen before
       if (!vegetablesMap.has(vegetableKey)) {
+        // Add it as a new entry with current price equal to last price
         vegetablesMap.set(vegetableKey, {
           id: purchase.vegetableId,
           name: purchase.vegetableName,
-          currentPrice: purchase.prices.kg,
-          lastPrice: purchase.prices.kg,
-          lastUpdated: purchase.date,
+          currentPrice: purchase.prices.kg,  // Most recent price
+          lastPrice: purchase.prices.kg,     // Same as current price initially
+          lastUpdated: purchase.date,        // When this price was recorded
         });
       } else {
+        // If we've seen this vegetable before
         const existingVeg = vegetablesMap.get(vegetableKey);
-        if (existingVeg.lastUpdated === existingVeg.lastUpdated) {
+        const purchaseDate = new Date(purchase.date);
+        const existingDate = new Date(existingVeg.lastUpdated);
+
+        if (purchaseDate > existingDate) {
+          // This is a more recent purchase, so update current price and make the existing current price the last price
           vegetablesMap.set(vegetableKey, {
             ...existingVeg,
-            lastPrice: purchase.prices.kg,
+            currentPrice: purchase.prices.kg,
+            lastPrice: existingVeg.currentPrice,
+            lastUpdated: purchase.date
           });
+        } else if (purchaseDate < existingDate) {
+          // This is an older purchase, so we only update lastPrice if it's the next most recent
+          const nextMostRecentDate = purchases
+            .filter(p => p.vegetableName.toLowerCase() === vegetableKey)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[1]?.date;
+            
+          if (purchase.date === nextMostRecentDate) {
+            vegetablesMap.set(vegetableKey, {
+              ...existingVeg,
+              lastPrice: purchase.prices.kg
+            });
+          }
         }
       }
     });
